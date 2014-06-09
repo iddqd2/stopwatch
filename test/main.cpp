@@ -44,7 +44,6 @@ int LapNumber=0;
 long buttonTime=0, buttonPressTime=0;
 int screenCleared = false, screenStopped = false;
 
-
 void printTimerRunning ()
 {
 	if (millis() - currentTimer < (unsigned long)blinkInterval1 && blinking == true)
