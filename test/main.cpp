@@ -40,9 +40,11 @@ char buf[10];                       // string buffer for itoa function
 int blinkInterval1=200, blinkInterval2=400;
 unsigned long currentTimer=0;
 unsigned long TotalTime, LapTime, PreviousLapTime;
-int LapNumber=0;
+int LapNumber=0, MaxLap=0;
 long buttonTime=0, buttonPressTime=0;
 int screenCleared = false, screenStopped = false;
+unsigned long lapsTime[20];
+int iCount;
 
 void printTimerRunning ()
 {
@@ -86,36 +88,29 @@ void printTime (long countTime, int cursorRow, int cursorLine, char *title)
 	   //lcd.clear();                                         // clear the LDC
 	   lcd.setCursor(cursorRow, cursorLine);
 	   lcd.print(title);
-//	   Serial.print(title);
 	   if (fractionalMins < 10){                            // pad in leading zeros
 		   lcd.print("0");                                 // add a zero
-//	      Serial.print("0");
 	   }
 
 	    lcd.print(itoa(fractionalMins, buf, 10));       // convert the int to a string and print a fractional part of 60 Minutes to the LCD
 	    lcd.print(":");                                 //print a colan.
-//	      Serial.print(":");
 
 
 	 if (fractionalSecs < 10){                            // pad in leading zeros
 		 lcd.print("0");                                 // add a zero
-//	      Serial.print("0");
 
 	 }
 
 	 lcd.print(itoa(fractionalSecs, buf, 10));          // convert the int to a string and print a fractional part of 60 Seconds to the LCD
 	 lcd.print(":");                                    //print a colan.
-//      Serial.print(":");
 
 
 	 if (fractional < 10){                                // pad in leading zeros
 		 lcd.print("0");                                 // add a zero
-//	      Serial.print("0");
 	 }
 
 	 lcd.print(itoa(fractional, buf, 10));              // convert the int to a string and print a fractional part of 25 Frames to the LCD
-//     Serial.print(itoa(fractional, buf, 10));
-//     Serial.println("");
+
 
 }
 
@@ -248,9 +243,14 @@ void DisplayLapTime()
 //		startTime = buttonPressTime;
 	   elapsedTime = buttonPressTime - startTime;		//since button press, not release
 	   LapTime = elapsedTime - PreviousLapTime;
+	   if ( LapNumber <99) {
+		   lapsTime[LapNumber+1] = LapTime;
+	   };
+
 	   PreviousLapTime = elapsedTime;
 	   TotalTime = elapsedTime;
 	   LapNumber++;
+	   MaxLap=LapNumber;
 	   printTime (LapTime, 0, 0, (char*)"Lap# :");
 	   Serial.print ("Lap#");
 	   Serial.print(LapNumber);
@@ -340,35 +340,31 @@ else if (buttonState == LOW && (millis() - buttonPressTime) > 5000) {
 if (stopButtonState == LOW && lastStopButtonState == HIGH && blinking == true) {
 	StopTimer();
 	blinking = false;// Stop routine
+	iCount = 1;
+}
 
+if (stopButtonState == LOW && lastStopButtonState == HIGH && blinking == false) {
+	if (iCount <= MaxLap) {
+		lcd.setCursor(0,0);
+		printTime (lapsTime[iCount], 0, 0, (char*)"Lap# :");
+		lcd.setCursor (4,0);
+		lcd.print(iCount);
+		iCount++;
+		delay (300);
+	}
+	else {
+		iCount = 1;
+		lcd.setCursor(0,0);
+		printTime (lapsTime[iCount], 0, 0, (char*)"Lap# :");
+		lcd.setCursor (4,0);
+		lcd.print(iCount);
+		iCount++;
+		delay(300);
+	}
 }
 
 if (blinking == true && screenCleared == false && screenStopped == false) {
 	printTime (millis()-startTime, 0, 1, (char*)"Elapsed:");
 }
-
-
-//delay(100);
-// run commands at the specified time interval
-// blink routine - blink the LED while timing
-// check to see if it's time to blink the LED; that is, the difference
-// between the current time and last time we blinked the LED is larger than
-// the interval at which we want to blink the LED.
-
-// if ( (millis() - previousMillis > interval) ) {
-//
-//    if (blinking == true){
-//       previousMillis = millis();                    // remember the last time we blinked the LED
-//
-//       digitalWrite(ledPin, HIGH);                   // Pulse the LED for Visual Feedback
-//
-//       elapsedTime =   millis() - startTime;         // store elapsed time
-//       //printTime (elapsedTime, 0, 0, "");
-//    }
-//
-//    else{
-//          digitalWrite(ledPin, LOW);                 // turn off LED when not blinking
-//          }
-// }
 
 }
