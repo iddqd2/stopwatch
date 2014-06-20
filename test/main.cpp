@@ -43,7 +43,7 @@ long TotalTime, LapTime, PreviousLapTime;
 int LapNumber=0, MaxLap=0;
 long lapsTime[99];
 int LapsCount;
-int WarmUpLap=true, LapsQuantity=2;
+int WarmUpLap=true, LapsQuantity=3;
 
 int blinkInterval1=200, blinkInterval2=400;
 long buttonTime=0, buttonPressTime=0;
@@ -176,9 +176,8 @@ void StopTimer()
 
 		}
 		else {
-			printTime (TotalTime, 0, 1, (char*)"Total:");
-
-		serialprintTime (elapsedTime, 0, 1, (char*)"Total:");
+			printTime (elapsedTime-lapsTime[0], 0, 1, (char*)"Total:");
+			serialprintTime (elapsedTime-lapsTime[0], 0, 1, (char*)"Total:");
 		}
 
 		LapNumber=0;
@@ -196,6 +195,7 @@ void StartTimer()
 //   	  startTime = millis();                             // store the start time
 //	  elapsedTime = millis() - startTime;
 	  memset(lapsTime, 0, sizeof(lapsTime));
+	  LapNumber = 0;
 	  LapsCount = 0;
 	  PreviousLapTime = 0;
 	  blinking = true;                                  // turn on blinking while timing
@@ -245,39 +245,56 @@ void DisplayLapTime()
 	elapsedTime = buttonPressTime - startTime;		//since button press, not release
 	LapTime = elapsedTime - PreviousLapTime;
 	if ( LapNumber <99) {
-		lapsTime[LapNumber+1] = LapTime;
+		lapsTime[LapNumber] = LapTime;
 	};
-	if (LapNumber > LapsQuantity) {
-		StopTimer();
+	PreviousLapTime = elapsedTime;
+	TotalTime = elapsedTime;
+
+
+	//		Serial.print ("buttonpresstime=");
+	//		Serial.print (buttonPressTime);
+	//		Serial.println("");
+	//		Serial.print ("startTime=");
+	//		Serial.print (startTime);
+	//		Serial.println("");
+	//		Serial.print ("elapsedTime=");
+	//		Serial.print (elapsedTime);
+	//		Serial.println("");
+	//		Serial.print ("LapTime=");
+	//		Serial.print (LapTime);
+	//		Serial.println("");
+	if (LapNumber == 0) {
+		lcd.clear();
+		lcd.setCursor(3,0);
+		lcd.print ("Warmup Lap");
+		Serial.print ("WarmUp Lap");
+		Serial.println("");
+
 	}
 	else {
-		PreviousLapTime = elapsedTime;
-		TotalTime = elapsedTime;
-		LapNumber++;
-		MaxLap=LapNumber;
-
-//		Serial.print ("buttonpresstime=");
-//		Serial.print (buttonPressTime);
-//		Serial.println("");
-//		Serial.print ("startTime=");
-//		Serial.print (startTime);
-//		Serial.println("");
-//		Serial.print ("elapsedTime=");
-//		Serial.print (elapsedTime);
-//		Serial.println("");
-//		Serial.print ("LapTime=");
-//		Serial.print (LapTime);
-//		Serial.println("");
-		if (LapNumber == 0) {
-			lcd.print ("WarmUp Lap");
-			Serial.print ("WarmUp Lap");
-		}
+		lcd.setCursor(0,0);
+		lcd.print("                ");
 		printTime (LapTime, 0, 0, (char*)"L :");
 		Serial.print ("Lap#");
 		Serial.print(LapNumber);
 		serialprintTime (LapTime, 0, 0, (char*)":");
 		lcd.setCursor (1,0);
 		lcd.print(LapNumber);
+
+	}
+
+	if (LapNumber >= LapsQuantity) {
+		StopTimer();
+		blinking = false;// Stop routine
+		buttonTime = 0;
+		LapsCount = 1;
+	}
+	else{
+		LapNumber++;
+		MaxLap=LapNumber;
+		Serial.print ("MaxLap=");
+		Serial.print (MaxLap);
+		Serial.println("");
 	}
 
 }
@@ -290,7 +307,7 @@ void setup()
   digitalWrite(buttonPin, HIGH);   // turn on pullup resistors. Wire button so that press shorts pin to ground.
   digitalWrite(stopButtonPin, HIGH);   // turn on pullup resistors. Wire button so that press shorts pin to ground.
   Serial.begin(9600);
-  lcd.setCursor(0,5);
+  lcd.setCursor(5,0);
   lcd.print("Ready");
   lcd.setCursor(0,1);
   Serial.println("Ready");
