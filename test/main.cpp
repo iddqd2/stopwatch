@@ -37,14 +37,19 @@ long  elapsedFrames;                  // elapsed frames for stop watch
 long elapsedSeconds;                 // elapsed seconds for stop watch
 long elapsedMinutes;                 // elapsed Minutes for stop watch
 char buf[10];                       // string buffer for itoa function
-int blinkInterval1=200, blinkInterval2=400;
-unsigned long currentTimer=0;
-unsigned long TotalTime, LapTime, PreviousLapTime;
+
+long currentTimer=0;
+long TotalTime, LapTime, PreviousLapTime;
 int LapNumber=0, MaxLap=0;
+long lapsTime[99];
+int LapsCount;
+int WarmUpLap=true, LapsQuantity=2;
+
+int blinkInterval1=200, blinkInterval2=400;
 long buttonTime=0, buttonPressTime=0;
 int screenCleared = false, screenStopped = false;
-unsigned long lapsTime[20];
-int iCount;
+
+
 
 void printTimerRunning ()
 {
@@ -88,9 +93,10 @@ void printTime (long countTime, int cursorRow, int cursorLine, char *title)
 	   //lcd.clear();                                         // clear the LDC
 	   lcd.setCursor(cursorRow, cursorLine);
 	   lcd.print(title);
-	   if (fractionalMins < 10){                            // pad in leading zeros
-		   lcd.print("0");                                 // add a zero
-	   }
+
+//	   if (fractionalMins < 10){                            // pad in leading zeros
+//		   lcd.print("0");                                 // add a zero
+//	   }
 
 	    lcd.print(itoa(fractionalMins, buf, 10));       // convert the int to a string and print a fractional part of 60 Minutes to the LCD
 	    lcd.print(":");                                 //print a colan.
@@ -98,7 +104,6 @@ void printTime (long countTime, int cursorRow, int cursorLine, char *title)
 
 	 if (fractionalSecs < 10){                            // pad in leading zeros
 		 lcd.print("0");                                 // add a zero
-
 	 }
 
 	 lcd.print(itoa(fractionalSecs, buf, 10));          // convert the int to a string and print a fractional part of 60 Seconds to the LCD
@@ -121,46 +126,35 @@ void printTime (long countTime, int cursorRow, int cursorLine, char *title)
 void serialprintTime (long countTime, int cursorRow, int cursorLine, char *title)
 {
 	// Routine to report elapsed time
-//	   countTime =   millis() - startTime;                // store elapsed time
 	   elapsedMinutes = (countTime / 60000L);
 	   elapsedSeconds = (countTime / 1000L);              // divide by 1000 to convert to seconds - then cast to an int to print
 	   elapsedFrames = (countTime / interval);            // divide by 100 to convert to 1/100 of a second - then cast to an int to print
 	   fractional = (int)(elapsedFrames % frameRate);       // use modulo operator to get fractional part of 100 Seconds
 	   fractionalSecs = (int)(elapsedSeconds % 60L);        // use modulo operator to get fractional part of 60 Seconds
 	   fractionalMins = (int)(elapsedMinutes % 60L);        // use modulo operator to get fractional part of 60 Minutes
-	   //lcd.clear();                                         // clear the LDC
-//	   lcd.setCursor(cursorRow, cursorLine);
-//	   lcd.print(title);
+
 	   Serial.print(title);
 	   if (fractionalMins < 10){                            // pad in leading zeros
-//		   lcd.print("0");                                 // add a zero
 	      Serial.print("0");
 	   }
 
-//	    lcd.print(itoa(fractionalMins, buf, 10));       // convert the int to a string and print a fractional part of 60 Minutes to the LCD
 	   Serial.print(itoa(fractionalMins, buf, 10));       // convert the int to a string and print a fractional part of 60 Minutes to the LCD
-//	    lcd.print(":");                                 //print a colan.
 	      Serial.print(":");
 
 
 	 if (fractionalSecs < 10){                            // pad in leading zeros
-//		 lcd.print("0");                                 // add a zero
 	      Serial.print("0");
 
 	 }
 
-//	 lcd.print(itoa(fractionalSecs, buf, 10));          // convert the int to a string and print a fractional part of 60 Seconds to the LCD
 	 Serial.print(itoa(fractionalSecs, buf, 10));          // convert the int to a string and print a fractional part of 60 Seconds to the LCD
-//	 lcd.print(":");                                    //print a colan.
       Serial.print(":");
 
 
 	 if (fractional < 10){                                // pad in leading zeros
-//		 lcd.print("0");                                 // add a zero
 	      Serial.print("0");
 	 }
 
-//	 lcd.print(itoa(fractional, buf, 10));              // convert the int to a string and print a fractional part of 25 Frames to the LCD
      Serial.print(itoa(fractional, buf, 10));
      Serial.println("");
 
@@ -171,8 +165,7 @@ void serialprintTime (long countTime, int cursorRow, int cursorLine, char *title
  */
 void StopTimer()
 {
-		elapsedTime = millis() - startTime;
-//		blinking = false;
+		elapsedTime = buttonPressTime - startTime;
 		lcd.setCursor (15,0);
 		lcd.print(" ");
 		lcd.setCursor(0,1);
@@ -201,10 +194,18 @@ void StartTimer()
 
 	  startTime = buttonPressTime;                             // store the start time since button press
 //   	  startTime = millis();                             // store the start time
-	  elapsedTime = millis() - startTime;
-	  PreviousLapTime = elapsedTime;
+//	  elapsedTime = millis() - startTime;
+	  memset(lapsTime, 0, sizeof(lapsTime));
+	  LapsCount = 0;
+	  PreviousLapTime = 0;
 	  blinking = true;                                  // turn on blinking while timing
 	  //delay(500);                                         // short delay to debounce switch
+
+	    Serial.print ("START startTime=");
+	  	Serial.print (startTime);
+		Serial.println("");
+
+
 	  lcd.setCursor(0,0);
 	  lcd.print("                ");
 }
@@ -239,24 +240,45 @@ void StartSingle() {
 void DisplayLapTime()
 {
 
-	   //blinking = false;                                    // turn off blinking, all done timing
-//		startTime = buttonPressTime;
-	   elapsedTime = buttonPressTime - startTime;		//since button press, not release
-	   LapTime = elapsedTime - PreviousLapTime;
-	   if ( LapNumber <99) {
-		   lapsTime[LapNumber+1] = LapTime;
-	   };
+	//blinking = false;                                    // turn off blinking, all done timing
+	//		startTime = buttonPressTime;
+	elapsedTime = buttonPressTime - startTime;		//since button press, not release
+	LapTime = elapsedTime - PreviousLapTime;
+	if ( LapNumber <99) {
+		lapsTime[LapNumber+1] = LapTime;
+	};
+	if (LapNumber > LapsQuantity) {
+		StopTimer();
+	}
+	else {
+		PreviousLapTime = elapsedTime;
+		TotalTime = elapsedTime;
+		LapNumber++;
+		MaxLap=LapNumber;
 
-	   PreviousLapTime = elapsedTime;
-	   TotalTime = elapsedTime;
-	   LapNumber++;
-	   MaxLap=LapNumber;
-	   printTime (LapTime, 0, 0, (char*)"Lap# :");
-	   Serial.print ("Lap#");
-	   Serial.print(LapNumber);
-	   serialprintTime (LapTime, 0, 0, (char*)":");
-	   lcd.setCursor (4,0);
-	   lcd.print(LapNumber);
+//		Serial.print ("buttonpresstime=");
+//		Serial.print (buttonPressTime);
+//		Serial.println("");
+//		Serial.print ("startTime=");
+//		Serial.print (startTime);
+//		Serial.println("");
+//		Serial.print ("elapsedTime=");
+//		Serial.print (elapsedTime);
+//		Serial.println("");
+//		Serial.print ("LapTime=");
+//		Serial.print (LapTime);
+//		Serial.println("");
+		if (LapNumber == 0) {
+			lcd.print ("WarmUp Lap");
+			Serial.print ("WarmUp Lap");
+		}
+		printTime (LapTime, 0, 0, (char*)"L :");
+		Serial.print ("Lap#");
+		Serial.print(LapNumber);
+		serialprintTime (LapTime, 0, 0, (char*)":");
+		lcd.setCursor (1,0);
+		lcd.print(LapNumber);
+	}
 
 }
 
@@ -268,10 +290,10 @@ void setup()
   digitalWrite(buttonPin, HIGH);   // turn on pullup resistors. Wire button so that press shorts pin to ground.
   digitalWrite(stopButtonPin, HIGH);   // turn on pullup resistors. Wire button so that press shorts pin to ground.
   Serial.begin(9600);
-  lcd.setCursor(0,0);
-  lcd.print("Ready for action");
+  lcd.setCursor(0,5);
+  lcd.print("Ready");
   lcd.setCursor(0,1);
-  Serial.println("Ready for action");
+  Serial.println("Ready");
 }
 
 void loop(){
@@ -283,6 +305,10 @@ void loop(){
 if (buttonState != lastButtonState) {
 	if (buttonState == LOW && lastButtonState == HIGH) {			//start button hold
 		buttonPressTime = millis();
+
+		Serial.print (buttonPressTime);
+		Serial.println("");
+
 		lastButtonState = buttonState;
 		//delay(70);
 		buttonTime = 0;
@@ -340,25 +366,25 @@ else if (buttonState == LOW && (millis() - buttonPressTime) > 5000) {
 if (stopButtonState == LOW && lastStopButtonState == HIGH && blinking == true) {
 	StopTimer();
 	blinking = false;// Stop routine
-	iCount = 1;
+	LapsCount = 1;
 }
 
 if (stopButtonState == LOW && lastStopButtonState == HIGH && blinking == false) {
-	if (iCount <= MaxLap) {
+	if (LapsCount <= MaxLap) {
 		lcd.setCursor(0,0);
-		printTime (lapsTime[iCount], 0, 0, (char*)"Lap# :");
-		lcd.setCursor (4,0);
-		lcd.print(iCount);
-		iCount++;
+		printTime (lapsTime[LapsCount], 0, 0, (char*)"L :");
+		lcd.setCursor (1,0);
+		lcd.print(LapsCount);
+		LapsCount++;
 		delay (300);
 	}
 	else {
-		iCount = 1;
+		LapsCount = 1;
 		lcd.setCursor(0,0);
-		printTime (lapsTime[iCount], 0, 0, (char*)"Lap# :");
-		lcd.setCursor (4,0);
-		lcd.print(iCount);
-		iCount++;
+		printTime (lapsTime[LapsCount], 0, 0, (char*)"L :");
+		lcd.setCursor (1,0);
+		lcd.print(LapsCount);
+		LapsCount++;
 		delay(300);
 	}
 }
